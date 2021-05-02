@@ -202,13 +202,14 @@ var fetchAdventures = (offset) => {
   }).then((r) => r.json());
 };
 
-var fetchAllAdventures = async () => {
+var fetchAllAdventures = async (progress) => {
   var allAdventures = [];
   for (var offset = 0; true; offset += 15) {
     var results = await fetchAdventures(offset);
     var adventures = results.data.user.search;
     allAdventures.push(...adventures);
     console.log(`retrieved ${allAdventures.length} total adventures`);
+    progress.innerHTML = `Loading... (${allAdventures.length}/???)`;
     if (adventures.length < 15) break;
   }
   return allAdventures;
@@ -249,10 +250,50 @@ var getText = (allAdventures) => {
   return `# AI Dungeon Export\n\n${adventuresText}`;
 };
 
+var createButton = (label) => {
+  var button = document.createElement("a");
+  button.innerHTML = label;
+  button.style =  "background-color: #777; color: black; padding: 10px 20px; font-size: 2em; border: 2px solid black; border-radius: 10px; text-align: center; cursor: pointer; margin: 8px;";
+  return button;
+};
+
+var createDownloadButton = (label, text, filename) => {
+  var button = createButton(label);
+  button.download = filename;
+  button.href = `data:text/plain,${encodeURIComponent(text)}`;
+  return button;
+};
+
+var createContainer = () => {
+  var container = document.createElement("div");
+  container.style = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5);";
+  var progress = document.createElement("div");
+  progress.style = "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); color: black; background-color: #999; font-size: 2em; padding: 10px;";
+  progress.innerHTML = "Loading...";
+  container.append(progress);
+  document.body.append(container);
+  return container;
+};
+
+var showButtons = (container, jsonText, plainText) => {
+  var buttons = document.createElement("div");
+  buttons.style = "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #333; display: flex; flex-direction: column;";
+  buttons.append(createDownloadButton("Download Text", plainText, "adventures.txt"));
+  buttons.append(createDownloadButton("Download JSON", jsonText, "adventures.json"));
+  var closeButton = createButton("Close");
+  closeButton.onclick = () => container.remove();
+  buttons.append(closeButton);
+  container.innerHTML = null;
+  container.append(buttons);
+};
+
 var allAdventures, allAdventuresText;
 
-fetchAllAdventures().then((data) => {
+var container = createContainer();
+
+fetchAllAdventures(container.children[0]).then((data) => {
   allAdventures = data;
   allAdventuresText = getText(allAdventures);
   console.log("done", allAdventures);
+  showButtons(container, JSON.stringify(allAdventures), allAdventuresText);
 });
